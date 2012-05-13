@@ -123,15 +123,6 @@ suite
             }
         },
 
-        'Node removal (absent)': {
-            topic: getSimpleArch,
-            'removeNode() absent': function(arch) {
-                assert.equal(arch.hasNode('XXX'), false);
-
-                arch.removeNode('XXX');
-            }
-        },
-
         'Node link': {
             topic: function() {
                 var arch = getEmptyArch();
@@ -272,7 +263,6 @@ suite
         'Remove tree (simple arch + plan) unforced': {
             topic: function() {
                 var arch = getEmptyArch();
-
                 arch.setNode('A', { run: 'testA' });
                 arch.setNode('B', { run: 'testB' }, 'A');
                 arch.setNode('C', { run: 'testC' }, 'A');
