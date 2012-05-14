@@ -40,7 +40,7 @@ function getArch(state) {
             });
         }
     }, '4A');
-
+/*
     arch.setNode('5A', {
         run: function(ctx) {
             state.push(ctx.plan);
@@ -55,7 +55,7 @@ function getArch(state) {
     }, '5A');
     arch.setNode('5C', { run: function() {} }, '5B');
     arch.setNode('5D', { run: function() {} }, '5C');
-
+*/
     arch.setNode('6A', {
         run: function(ctx) {
             state.push(ctx.plan);
@@ -163,7 +163,7 @@ suite
                 assert.equal(state[3], '3A');
             }
         },
-
+/*
         'Do not link done node (simple plan)': {
             topic: function() {
                 var _this = this,
@@ -175,6 +175,7 @@ suite
                 )
             },
             'there are no double done jobs': function(error, state) {
+                console.log(error);
                 var plan = state[0];
                 assert.isNull(error);
                 assert.lengthOf(plan.doneJobs, 4);
@@ -184,7 +185,7 @@ suite
                     });
             }
         },
-
+*/
         'Run plans on same node': {
             topic: function() {
                 var _this = this,
@@ -202,7 +203,6 @@ suite
             },
             'test': function(error, state) {
                 assert.isNull(error);
-                console.log(state);
             }
         },
 
