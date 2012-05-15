@@ -3,67 +3,172 @@ var VOWS = require('vows'),
     suite = VOWS.describe('Arch'),
     APW = require('../lib/apw');
 
+function createNode(id) {
+    return {
+
+        getId: function() {
+            return id;
+        },
+
+        run: function() {
+            return 'test' + id;
+        }
+
+    };
+}
+
 function getEmptyArch() {
     return new APW.Arch();
 }
 
 function getSimpleArch() {
-    var arch = getEmptyArch();
+    /*
+        A
+        |
+        B
+    */
+    return getEmptyArch()
+        .addNode(createNode('A'))
+        .addNode(createNode('B'), 'A');
+}
 
-    arch.setNode('A', { run: 'testA' });
-    arch.setNode('B', { run: 'testB' }, 'A');
+function getArch1() {
+    /*
+        A
+       / \
+      B   C
+       \ /
+        D
+    */
+    return getEmptyArch()
+        .addNode(createNode('A'))
+        .addNode(createNode('B'), 'A')
+        .addNode(createNode('C'), 'A')
+        .addNode(createNode('D'), ['B', 'C']);
+}
 
-    return arch;
+function getArch2() {
+    /*
+        A
+       / \
+      B   D
+      |   |
+      C   E
+       \ /
+        F
+        |
+        G
+     */
+    return getEmptyArch()
+        .addNode(createNode('A'))
+        .addNode(createNode('B'), 'A')
+        .addNode(createNode('D'), 'A')
+        .addNode(createNode('C'), 'B')
+        .addNode(createNode('E'), 'D')
+        .addNode(createNode('F'), ['C', 'E'])
+        .addNode(createNode('G'), 'F');
 }
 
 suite
     .addBatch({
-        'Node set / get': {
-            topic: getSimpleArch,
-            'children': function(arch) {
-                assert.lengthOf(arch.children['A'], 1);
-                assert.equal(arch.children['A'][0], 'B');
-                assert.lengthOf(arch.children['B'], 0);
-            }, 
-            'parents': function(arch) {
-                assert.lengthOf(arch.parents['B'], 1);
-                assert.equal(arch.parents['B'][0], 'A');
-                assert.lengthOf(arch.parents['A'], 0);
-            }, 
-            'getNode() A': function(arch) {
-                var node = arch.getNode('A');
 
-                assert.equal(node.run, 'testA');
+        'Arch getters': {
+            topic: getSimpleArch,
+            'getNode() A': function(arch) {
+                assert.equal(arch.getNode('A').run(), 'testA');
             },
             'getNode() default': function(arch) {
-                var node = arch.getNode('XXX');
-
-                assert.equal(node.getId(), 'XXX');
+                assert.equal(arch.getNode('XXX').getId(), 'XXX');
             },
             'getChildren() A': function(arch) {
                 var children = arch.getChildren('A');
-                
+
                 assert.lengthOf(children, 1);
-                assert.equal(children[0], 'B');
+                assert.equal(children.pop(), 'B');
             },
             'getParents() B': function(arch) {
                 var parents = arch.getParents('B');
-                
+
                 assert.lengthOf(parents, 1);
-                assert.equal(parents[0], 'A');
+                assert.equal(parents.pop(), 'A');
+            }
+        },
+
+        'Arch.addNode()': {
+            topic: getSimpleArch,
+            'new': function(arch) {
+                arch.addNode(createNode('new'), 'A', 'B');
+
+                assert.ok(arch.hasNode('new'));
+                assert.equal(arch.getChildren('new'), 'B');
+                assert.equal(arch.getParents('new'), 'A');
+            },
+            'already existent throws': function(arch) {
+                assert.throws(function() {
+                    arch.addNode(createNode('A'));
+                });
+            }
+        },
+
+        'Arch.setNode()': {
+            topic: getArch1,
+            'new': function(arch) {
+                arch.setNode(createNode('new'), 'A', 'D');
+
+                assert.ok(arch.hasNode('new'));
+                assert.equal(arch.getParents('new'), 'A');
+                assert.equal(arch.getChildren('new'), 'D');
+            },
+            'already existent': function(arch) {
+                var replaceNode = 'D';
+                arch.setNode({
+                    getId: function() {
+                        return replaceNode;
+                    },
+                    run: function() {
+                        return 'new ' + replaceNode;
+                    }
+                }, 'A', 'B');
+
+                assert.ok(arch.hasNode(replaceNode));
+                assert.equal(arch.getNode(replaceNode).run(), 'new ' + replaceNode);
+                assert.equal(arch.getParents(replaceNode), 'A');
+                assert.equal(arch.getChildren(replaceNode), 'B');
+            }
+        },
+
+        'Arch.replaceNode()': {
+            topic: getArch1,
+            'new throws': function(arch) {
+                assert.throws(function() {
+                    arch.replaceNode(createNode('new'));
+                });
+            },
+            'already existent': function(arch) {
+                var replaceNode = 'D';
+                arch.replaceNode({
+                    getId: function() {
+                        return replaceNode;
+                    },
+                    run: function() {
+                        return 'new ' + replaceNode;
+                    }
+                }, 'A', 'B');
+
+                assert.ok(arch.hasNode(replaceNode));
+                assert.equal(arch.getNode(replaceNode).run(), 'new ' + replaceNode);
+                assert.equal(arch.getParents(replaceNode), 'A');
+                assert.equal(arch.getChildren(replaceNode), 'B');
             }
         },
 
         'Node availability check': {
             topic: function() {
-                var arch = getEmptyArch();
-                
-                arch.setNode('A1', { run: 'testA1' });
-                arch.setNode('A2', { run: 'testA2' });
-                arch.setNode('B', { run: 'testB' }, 'A1');
-                arch.setNode('C', { run: 'testC' }, ['A1', 'A2']);
-                
-                return arch;
+                return getEmptyArch()
+                    .addNode(createNode('A1'))
+                    .addNode(createNode('A2'))
+                    .addNode(createNode('B'), 'A1')
+                    .addNode(createNode('C'), ['A1', 'A2']);
             },
             'hasNode() A1': function(arch) {
                 assert.equal(arch.hasNode('A1'), true);
@@ -134,14 +239,11 @@ suite
 
         'Node link': {
             topic: function() {
-                var arch = getEmptyArch();
-                
-                arch.setNode('A', { run: 'testA' });
-                arch.setNode('B', { run: 'testA' });
-                arch.link('B', 'A');
-                arch.link('B', 'A');
-                
-                return arch;
+                return getEmptyArch()
+                    .addNode(createNode('A'))
+                    .addNode(createNode('B'))
+                    .link('B', 'A')
+                    .link('B', 'A');
             },
             'link() B -> A': function(arch) {
                 var children = arch.getChildren('A');
@@ -153,19 +255,14 @@ suite
                 
                 assert.lengthOf(parents, 1);
                 assert.equal(parents[0], 'A');
-            }            
+            }
         },
 
         'Node unlink': {
             topic: function() {
-                var arch = getEmptyArch();
-
-                arch.setNode('A', { run: 'testA' });
-                arch.setNode('B', { run: 'testB' }, 'A');
-                arch.unlink('B', 'A');
-                arch.unlink('B', 'A');
-
-                return arch;
+                return getSimpleArch()
+                    .unlink('B', 'A')
+                    .unlink('B', 'A');
             },
             'unlink() B - A': function(arch) {
                 assert.lengthOf(arch.getChildren('A'), 0);
@@ -175,16 +272,7 @@ suite
 
         'Remove tree (simple arch) unforced': {
             topic: function() {
-                var arch = getEmptyArch();
-
-                arch.setNode('A', { run: 'testA' });
-                arch.setNode('B', { run: 'testB' }, 'A');
-                arch.setNode('C', { run: 'testC' }, 'A');
-                arch.setNode('D', { run: 'testD' }, ['B', 'C']);
-
-                arch.removeTree('C');
-
-                return arch;
+                return getArch1().removeTree('C');
             },
             'removeTree() C unforced': function(arch) {
                 assert.equal(arch.hasChildren('A', 'B'), true);
@@ -196,16 +284,7 @@ suite
 
         'Remove tree (simple arch) forced': {
             topic: function() {
-                var arch = getEmptyArch();
-
-                arch.setNode('A', { run: 'testA' });
-                arch.setNode('B', { run: 'testB' }, 'A');
-                arch.setNode('C', { run: 'testC' }, 'A');
-                arch.setNode('D', { run: 'testD' }, ['B', 'C']);
-
-                arch.removeTree('C', true);
-
-                return arch;
+                return getArch1().removeTree('C', true);
             },
             'removeTree() C forced': function(arch) {
                 assert.equal(arch.hasChildren('A', 'B'), true);
@@ -218,19 +297,7 @@ suite
 
         'Remove tree (not so simple arch) unforced': {
             topic: function() {
-                var arch = getEmptyArch();
-
-                arch.setNode('A', { run: 'testA' });
-                arch.setNode('B', { run: 'testB' }, 'A');
-                arch.setNode('D', { run: 'testD' }, 'A');
-                arch.setNode('C', { run: 'testC' }, 'B');
-                arch.setNode('E', { run: 'testE' }, 'D');
-                arch.setNode('F', { run: 'testF' }, ['C', 'E']);
-                arch.setNode('G', { run: 'testG' }, 'F');
-
-                arch.removeTree('D');
-
-                return arch;
+                return getArch2().removeTree('D');
             },
             'removeTree() D unforced': function(arch) {
                 assert.equal(arch.hasChildren('A', 'B'), true);
@@ -244,19 +311,7 @@ suite
 
         'Remove tree (not so simple arch) forced': {
             topic: function() {
-                var arch = getEmptyArch();
-
-                arch.setNode('A', { run: 'testA' });
-                arch.setNode('B', { run: 'testB' }, 'A');
-                arch.setNode('D', { run: 'testD' }, 'A');
-                arch.setNode('C', { run: 'testC' }, 'B');
-                arch.setNode('E', { run: 'testE' }, 'D');
-                arch.setNode('F', { run: 'testF' }, ['C', 'E']);
-                arch.setNode('G', { run: 'testG' }, 'F');
-
-                arch.removeTree('D', true);
-
-                return arch;
+                return getArch2().removeTree('D', true);
             },
             'removeTree() D forced': function(arch) {
                 assert.equal(arch.hasChildren('A', 'B'), true);
@@ -271,14 +326,8 @@ suite
 
         'Remove tree (simple arch + plan) unforced': {
             topic: function() {
-                var arch = getEmptyArch();
-
-                arch.setNode('A', { run: 'testA' });
-                arch.setNode('B', { run: 'testB' }, 'A');
-                arch.setNode('C', { run: 'testC' }, 'A');
-                arch.setNode('D', { run: 'testD' }, ['B', 'C']);
-
-                var plan = arch.createPlan('A');
+                var arch = getArch1(),
+                    plan = arch.createPlan('A');
 
                 arch.removeTree('C');
 
