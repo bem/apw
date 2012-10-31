@@ -1,6 +1,6 @@
 {
   "name": "apw",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "homepage": "http://github.com/bem/apw",
   "author": "Sergey Kryzhanovsky <skryzhanovsky@ya.ru> (http://github.com/afelix)",
   "maintainers": [
@@ -27,7 +27,8 @@
   "dependencies": {
     "q": "~0.8.8",
     "coa": "0.3.x",
-    "inherit": "1"
+    "inherit": "1",
+    "node.extend": "1"
   },
   "devDependencies": {
     "mocha": "1.0.x",
