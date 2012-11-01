@@ -2,6 +2,8 @@ var APW = require(process.env.COVER? '../lib-cov/apw' : '../lib/apw'),
     ASSERT = require('assert'),
     COMMON = require('./common'),
 
+    extend = require('node.extend'),
+
     getSimpleArch = COMMON.getSimpleArch,
     getEmptyArch = COMMON.getEmptyArch,
     createNode = COMMON.createNode,
@@ -239,6 +241,48 @@ describe('Node link', function() {
         
         ASSERT.equal(parents.length, 1);
         ASSERT.equal(parents[0], 'A');
+    });
+});
+
+describe('Node lazy links', function() {
+    beforeEach(function() {
+        arch = getArch2();
+    });
+
+    it('link() E -> nonexistent creates lazy link', function() {
+        var c = extend({}, arch.children),
+            p = extend({}, arch.parents),
+            link = {
+                parent: 'X',
+                child: 'E',
+                ref: 0
+            };
+
+        arch.link('E', 'X', true);
+
+        ASSERT.deepEqual(arch.children, c);
+        ASSERT.deepEqual(arch.parents, p);
+        ASSERT.deepEqual(arch.lazyLinks,
+            {
+                E: [link],
+                X: [link]
+            }
+        );
+    });
+
+    it('lazy link becomes real when both linking nodes become available in arch', function() {
+        arch.link('E', 'X', true);
+        arch.addNode(createNode('X'));
+
+        ASSERT(arch.hasChildren('X', 'E'));
+    });
+
+    it('unlink() removes lazy link', function() {
+        arch.link('E', 'X', true);
+        arch.addNode(createNode('X'));
+        arch.unlink('E', 'X');
+
+        ASSERT.deepEqual(arch.lazyLinks, {});
     });
 });
 
